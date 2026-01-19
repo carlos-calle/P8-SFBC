@@ -80,33 +80,41 @@ class MainWindow(ctk.CTk):
         self.slider_paths.grid(row=9, column=0, padx=20, pady=5)
         self.slider_paths.set(1)
 
+        self.switch_sfbc_var = ctk.StringVar(value="off")
+        self.switch_sfbc = ctk.CTkSwitch(self.sidebar_frame, 
+                                         text="Activar SFBC (MISO)", 
+                                         command=self.update_sfbc_label,
+                                         variable=self.switch_sfbc_var, 
+                                         onvalue="on", offvalue="off")
+        self.switch_sfbc.grid(row=10, column=0, padx=20, pady=(20, 0))
+
         # Grupo 3: Selección de Archivo (NUEVO)
         self.lbl_source = ctk.CTkLabel(self.sidebar_frame, text="Fuente de Datos:", anchor="w")
-        self.lbl_source.grid(row=10, column=0, padx=20, pady=(20, 0))
+        self.lbl_source.grid(row=11, column=0, padx=20, pady=(20, 0))
 
         self.btn_select_file = ctk.CTkButton(self.sidebar_frame, text="Seleccionar Imagen...", 
                                              fg_color="#4B4B4B", hover_color="#5B5B5B", 
                                              command=self.select_file)
-        self.btn_select_file.grid(row=11, column=0, padx=20, pady=5)
+        self.btn_select_file.grid(row=12, column=0, padx=20, pady=5)
 
         self.lbl_filename = ctk.CTkLabel(self.sidebar_frame, text="[Ningún archivo]", font=("Arial", 11), text_color="gray")
-        self.lbl_filename.grid(row=12, column=0, padx=20, pady=0)
+        self.lbl_filename.grid(row=13, column=0, padx=20, pady=0)
 
         # Grupo 4: Botones de Acción
         self.btn_run_img = ctk.CTkButton(self.sidebar_frame, text="TRANSMITIR IMAGEN", 
                                          fg_color="#1f538d", hover_color="#14375e", # Azul profesional
                                          command=self.action_run_image)
-        self.btn_run_img.grid(row=13, column=0, padx=20, pady=(20, 10))
+        self.btn_run_img.grid(row=14, column=0, padx=20, pady=(20, 10))
 
         self.btn_run_ber = ctk.CTkButton(self.sidebar_frame, text="GENERAR CURVA BER", 
                                          fg_color="transparent", border_width=2, 
                                          command=self.action_plot_ber)
-        self.btn_run_ber.grid(row=14, column=0, padx=20, pady=10)
+        self.btn_run_ber.grid(row=15, column=0, padx=20, pady=10)
 
         self.btn_run_papr = ctk.CTkButton(self.sidebar_frame, text="ANALIZAR PAPR", 
                                           fg_color="transparent", border_width=2, 
                                           command=self.action_plot_papr)
-        self.btn_run_papr.grid(row=15, column=0, padx=20, pady=10)
+        self.btn_run_papr.grid(row=16, column=0, padx=20, pady=10)
 
 
         # --- PANEL CENTRAL (VISUALIZACIÓN) ---
@@ -172,12 +180,22 @@ class MainWindow(ctk.CTk):
         mod_idx = self.mod_map[self.option_mod.get()]
         snr = int(self.slider_snr.get())
         paths = int(self.slider_paths.get())
+
+        use_sfbc = (self.switch_sfbc_var.get() == "on")
         
         self.lbl_status.configure(text="Procesando OFDM... Espere.")
         self.update() # Forzar refresco de UI
 
         # 2. Llamar al Controlador
-        result = self.manager.run_image_transmission(self.selected_image_path, bw_idx, prof_idx, mod_idx, snr, paths)
+        result = self.manager.run_image_transmission(
+            self.selected_image_path, 
+            bw_idx, 
+            prof_idx, 
+            mod_idx, 
+            snr, 
+            paths, 
+            use_sfbc=use_sfbc
+        )
 
         # 3. Mostrar Resultados
         if result["success"]:
@@ -198,31 +216,49 @@ class MainWindow(ctk.CTk):
 
     def action_plot_ber(self):
         """Genera y muestra gráfica BER con la IMAGEN"""
-        # Validación de seguridad
+        # 1. Validación de seguridad
         if not self.selected_image_path:
             messagebox.showwarning("Falta Imagen", "Selecciona una imagen para analizar su BER.")
             return
 
+        # 2. Recolectar Inputs
         bw_idx = self.bw_map[self.option_bw.get()]
         prof_idx = self.cp_map[self.option_cp.get()]
         mod_idx = self.mod_map[self.option_mod.get()]
         paths = int(self.slider_paths.get())
+        
+        # --- NUEVO: Leer estado SFBC ---
+        # Asegúrate de haber creado self.switch_sfbc_var en setup_ui como vimos antes
+        use_sfbc = (self.switch_sfbc_var.get() == "on")
 
         self.lbl_status.configure(text="Calculando BER de la imagen... (Espere)")
         self.update()
 
         try:
-            # --- CAMBIO: Pasamos self.selected_image_path ---
+            # --- CAMBIO: Pasamos el flag use_sfbc al manager ---
             snr_axis, ber_vals = self.manager.calculate_ber_curve(
-                self.selected_image_path, bw_idx, prof_idx, mod_idx, paths
+                self.selected_image_path, 
+                bw_idx, 
+                prof_idx, 
+                mod_idx, 
+                paths, 
+                use_sfbc=use_sfbc  # <--- Flag decisivo
             )
 
+            # --- Título Dinámico ---
+            tech_str = "SFBC (MISO)" if use_sfbc else "SISO Normal"
+            title = f"Curva BER vs SNR - {tech_str}"
+
             self.embed_plot(self.tab_ber, snr_axis, ber_vals, 
-                           "Curva BER vs SNR (Datos de Imagen)", "SNR (dB)", "Bit Error Rate (BER)", log_y=True)
-            self.lbl_status.configure(text="Gráfica BER generada.")
+                           title, "SNR (dB)", "Bit Error Rate (BER)", log_y=True)
+            
+            self.lbl_status.configure(text=f"Gráfica BER generada ({tech_str}).")
             self.tabview.set("Análisis BER")
             
         except Exception as e:
+             # Es bueno imprimir el error en consola para depurar
+             import traceback
+             traceback.print_exc()
              self.lbl_status.configure(text="Error en cálculo BER")
              messagebox.showerror("Error", str(e))
 
@@ -289,3 +325,9 @@ class MainWindow(ctk.CTk):
         canvas = FigureCanvasTkAgg(fig, master=parent_frame)
         canvas.draw()
         canvas.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=10)
+
+    
+    def update_sfbc_label(self):
+        """Callback opcional para ver en consola el cambio"""
+        estado = self.switch_sfbc_var.get()
+        print(f"Modo SFBC cambiado a: {estado}")

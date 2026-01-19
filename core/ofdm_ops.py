@@ -4,8 +4,8 @@ def modulate_ofdm(symbols, n_fft, nc):
     """
     Empaqueta símbolos en subportadoras y aplica IFFT.
     symbols: Array de símbolos complejos (QPSK/QAM)
-    n_fft: Tamaño total de la FFT (ej. 1024)
-    nc: Subportadoras activas (ej. 600)
+    n_fft: Tamaño total de la FFT
+    nc: Subportadoras activas
     """
     num_symbols = len(symbols)
     # Número de bloques OFDM necesarios
@@ -109,3 +109,74 @@ def equalize_channel(rx_freq_symbols, h_impulse_response, n_fft, nc):
         equalized_symbols.extend(block_x_est)
         
     return np.array(equalized_symbols)
+
+
+def apply_sfbc_encoding(symbols):
+    """
+    Codificación Alamouti/SFBC para 2 antenas.
+    Entrada: Array de símbolos (debe ser par).
+    Salida: Tuple (symbols_ant1, symbols_ant2)
+    """
+    # Asegurar longitud par (padding si es necesario)
+    if len(symbols) % 2 != 0:
+        symbols = np.append(symbols, 0)
+    
+    # Separar en pares (s0, s1)
+    s0 = symbols[0::2]
+    s1 = symbols[1::2]
+    
+    # Construir vectores para cada antena
+    # Antena 1: [s0, -s1*]
+    ant1 = np.empty_like(symbols)
+    ant1[0::2] = s0
+    ant1[1::2] = -np.conj(s1)
+    
+    # Antena 2: [s1, s0*]
+    ant2 = np.empty_like(symbols)
+    ant2[0::2] = s1
+    ant2[1::2] = np.conj(s0)
+    
+    return ant1, ant2
+
+
+def decode_sfbc(rx_symbols, h1_freq, h2_freq, nc):
+    """
+    Decodifica la señal recibida usando las estimaciones de canal H1 y H2.
+    """
+    # 1. Extraer subportadoras de datos de los canales (Un solo bloque)
+    H1_one_block = h1_freq[1:nc+1]
+    H2_one_block = h2_freq[1:nc+1]
+    
+    # 2. Calcular cuántos bloques OFDM recibimos en total
+    # rx_symbols contiene TODOS los bloques concatenados
+    num_blocks = len(rx_symbols) // nc
+    
+    # 3. Repetir el canal H para que cubra todos los bloques
+    H1_full = np.tile(H1_one_block, num_blocks)
+    H2_full = np.tile(H2_one_block, num_blocks)
+    
+    # 4. Separar lo recibido y el canal en pares (r0, r1) y (H_pair)
+    # Al hacer slicing [0::2] sobre H1_full, ahora sí tiene el mismo tamaño que r0
+    r0 = rx_symbols[0::2]
+    r1 = rx_symbols[1::2]
+    
+    H1_pair = H1_full[0::2] 
+    H2_pair = H2_full[0::2]
+    
+    # 5. Denominador (Norma al cuadrado)
+    norm_sq = (np.abs(H1_pair)**2 + np.abs(H2_pair)**2)
+    # Evitar división por cero
+    norm_sq[norm_sq == 0] = 1e-10
+    
+    # 6. Estimación (Fórmulas de Alamouti)
+    # Ahora todas las matrices tienen el mismo tamaño
+    s0_est = (np.conj(H1_pair) * r0 + H2_pair * np.conj(r1)) / norm_sq
+    s1_est = (np.conj(H2_pair) * r0 - H1_pair * np.conj(r1)) / norm_sq
+    
+    # 7. Reconstruir el stream único
+    # Preparamos el array de salida
+    decoded = np.empty(len(rx_symbols), dtype=complex)
+    decoded[0::2] = s0_est
+    decoded[1::2] = s1_est
+    
+    return decoded
