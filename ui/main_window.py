@@ -42,7 +42,7 @@ class MainWindow(ctk.CTk):
         # --- PANEL LATERAL (CONTROLES) ---
         self.sidebar_frame = ctk.CTkFrame(self, width=250, corner_radius=0)
         self.sidebar_frame.grid(row=0, column=0, sticky="nsew")
-        self.sidebar_frame.grid_rowconfigure(15, weight=1) # Espaciador al final
+        self.sidebar_frame.grid_rowconfigure(20, weight=1) # Empujar status al fondo
 
         # Título
         self.logo_label = ctk.CTkLabel(self.sidebar_frame, text="LTE SIMULATOR", font=ctk.CTkFont(size=20, weight="bold"))
@@ -68,16 +68,12 @@ class MainWindow(ctk.CTk):
         self.option_mod.grid(row=5, column=0, padx=20, pady=5)
         self.option_mod.set("16-QAM")
 
-        self.lbl_snr = ctk.CTkLabel(self.sidebar_frame, text="SNR: 15 dB")
-        self.lbl_snr.grid(row=6, column=0, padx=20, pady=(10,0))
-        self.slider_snr = ctk.CTkSlider(self.sidebar_frame, from_=0, to=40, number_of_steps=40, command=self.update_snr_label)
-        self.slider_snr.grid(row=7, column=0, padx=20, pady=5)
-        self.slider_snr.set(15)
+        # Slider SNR eliminado (ya no se usa en modo batch)
 
         self.lbl_paths = ctk.CTkLabel(self.sidebar_frame, text="Caminos (Multipath): 1")
-        self.lbl_paths.grid(row=8, column=0, padx=20, pady=(10,0))
+        self.lbl_paths.grid(row=6, column=0, padx=20, pady=(10,0))
         self.slider_paths = ctk.CTkSlider(self.sidebar_frame, from_=1, to=10, number_of_steps=9, command=self.update_paths_label)
-        self.slider_paths.grid(row=9, column=0, padx=20, pady=5)
+        self.slider_paths.grid(row=7, column=0, padx=20, pady=5)
         self.slider_paths.set(1)
 
         self.switch_sfbc_var = ctk.StringVar(value="off")
@@ -86,35 +82,43 @@ class MainWindow(ctk.CTk):
                                          command=self.update_sfbc_label,
                                          variable=self.switch_sfbc_var, 
                                          onvalue="on", offvalue="off")
-        self.switch_sfbc.grid(row=10, column=0, padx=20, pady=(20, 0))
+        self.switch_sfbc.grid(row=8, column=0, padx=20, pady=(20, 0))
 
-        # Grupo 3: Selección de Archivo (NUEVO)
+        # Grupo 3: Selección de Archivo
         self.lbl_source = ctk.CTkLabel(self.sidebar_frame, text="Fuente de Datos:", anchor="w")
-        self.lbl_source.grid(row=11, column=0, padx=20, pady=(20, 0))
+        self.lbl_source.grid(row=9, column=0, padx=20, pady=(20, 0))
 
         self.btn_select_file = ctk.CTkButton(self.sidebar_frame, text="Seleccionar Imagen...", 
                                              fg_color="#4B4B4B", hover_color="#5B5B5B", 
                                              command=self.select_file)
-        self.btn_select_file.grid(row=12, column=0, padx=20, pady=5)
+        self.btn_select_file.grid(row=10, column=0, padx=20, pady=5)
 
         self.lbl_filename = ctk.CTkLabel(self.sidebar_frame, text="[Ningún archivo]", font=("Arial", 11), text_color="gray")
-        self.lbl_filename.grid(row=13, column=0, padx=20, pady=0)
+        self.lbl_filename.grid(row=11, column=0, padx=20, pady=0)
 
         # Grupo 4: Botones de Acción
         self.btn_run_img = ctk.CTkButton(self.sidebar_frame, text="TRANSMITIR IMAGEN", 
-                                         fg_color="#1f538d", hover_color="#14375e", # Azul profesional
+                                         fg_color="#1f538d", hover_color="#14375e",
                                          command=self.action_run_image)
-        self.btn_run_img.grid(row=14, column=0, padx=20, pady=(20, 10))
+        self.btn_run_img.grid(row=12, column=0, padx=20, pady=(20, 10))
 
         self.btn_run_ber = ctk.CTkButton(self.sidebar_frame, text="GENERAR CURVA BER", 
                                          fg_color="transparent", border_width=2, 
                                          command=self.action_plot_ber)
-        self.btn_run_ber.grid(row=15, column=0, padx=20, pady=10)
+        self.btn_run_ber.grid(row=13, column=0, padx=20, pady=10)
 
-        self.btn_run_papr = ctk.CTkButton(self.sidebar_frame, text="ANALIZAR PAPR", 
+        '''self.btn_run_papr = ctk.CTkButton(self.sidebar_frame, text="ANALIZAR PAPR", 
                                           fg_color="transparent", border_width=2, 
                                           command=self.action_plot_papr)
-        self.btn_run_papr.grid(row=16, column=0, padx=20, pady=10)
+        self.btn_run_papr.grid(row=14, column=0, padx=20, pady=10)'''
+        
+        # --- CORRECCIÓN AQUÍ: Label de Estado movido al Sidebar ---
+        self.lbl_status = ctk.CTkLabel(self.sidebar_frame, 
+                                       text="Estado: Esperando", 
+                                       text_color="gray",
+                                       wraplength=200)
+        # Usamos row=20 para asegurar que quede al final
+        self.lbl_status.grid(row=20, column=0, padx=20, pady=20)
 
 
         # --- PANEL CENTRAL (VISUALIZACIÓN) ---
@@ -123,24 +127,12 @@ class MainWindow(ctk.CTk):
         
         self.tab_img = self.tabview.add("Visualización Imagen")
         self.tab_ber = self.tabview.add("Análisis BER")
-        self.tab_papr = self.tabview.add("Análisis PAPR")
+        #self.tab_papr = self.tabview.add("Análisis PAPR")
 
-        # Configuración Tab Imagen
+        # Configuración Tab Imagen 
+        # NOTA: Ya no necesitamos crear labels aquí (lbl_tx_img, etc) porque 
+        # la función action_run_image limpiará todo para poner la gráfica Matplotlib.
         self.tab_img.grid_columnconfigure(0, weight=1)
-        self.tab_img.grid_columnconfigure(1, weight=1)
-        
-        self.lbl_tx_title = ctk.CTkLabel(self.tab_img, text="Imagen Transmitida", font=("Arial", 16, "bold"))
-        self.lbl_tx_title.grid(row=0, column=0, pady=10)
-        self.lbl_tx_img = ctk.CTkLabel(self.tab_img, text="\n\n[Seleccione una imagen\npara comenzar]", font=("Arial", 14), text_color="gray")
-        self.lbl_tx_img.grid(row=1, column=0)
-
-        self.lbl_rx_title = ctk.CTkLabel(self.tab_img, text="Imagen Recibida", font=("Arial", 16, "bold"))
-        self.lbl_rx_title.grid(row=0, column=1, pady=10)
-        self.lbl_rx_img = ctk.CTkLabel(self.tab_img, text="\n\n[Esperando simulación...]", font=("Arial", 14), text_color="gray")
-        self.lbl_rx_img.grid(row=1, column=1)
-
-        self.lbl_status = ctk.CTkLabel(self.tab_img, text="Estado: Esperando configuración", font=("Courier", 14), text_color="yellow")
-        self.lbl_status.grid(row=2, column=0, columnspan=2, pady=20)
 
 
     # --- EVENTOS Y LÓGICA DE INTERFAZ ---
@@ -168,99 +160,182 @@ class MainWindow(ctk.CTk):
             self.lbl_status.configure(text="Imagen cargada. Lista para transmitir.", text_color="white")
 
     def action_run_image(self):
-        """Ejecuta la simulación de imagen"""
-        # 0. Validación de entrada
+        """Ejecuta la Comparativa Visual (Grilla 2x2)"""
         if not self.selected_image_path:
-            messagebox.showwarning("Falta Imagen", "Por favor selecciona una imagen primero usando el botón 'Seleccionar Imagen'.")
+            messagebox.showwarning("Atención", "Selecciona una imagen primero.")
             return
 
-        # 1. Recolectar Inputs
+        # Recolectar Inputs
         bw_idx = self.bw_map[self.option_bw.get()]
         prof_idx = self.cp_map[self.option_cp.get()]
         mod_idx = self.mod_map[self.option_mod.get()]
-        snr = int(self.slider_snr.get())
-        paths = int(self.slider_paths.get())
-
-        use_sfbc = (self.switch_sfbc_var.get() == "on")
+        paths = int(self.slider_paths.get()) # ¡Este SÍ lo usamos!
         
-        self.lbl_status.configure(text="Procesando OFDM... Espere.")
-        self.update() # Forzar refresco de UI
-
-        # 2. Llamar al Controlador
-        result = self.manager.run_image_transmission(
-            self.selected_image_path, 
-            bw_idx, 
-            prof_idx, 
-            mod_idx, 
-            snr, 
-            paths, 
-            use_sfbc=use_sfbc
-        )
-
-        # 3. Mostrar Resultados
-        if result["success"]:
-            # Convertir Matrices Numpy a Imágenes CTk
-            img_tx_pil = Image.fromarray(result["tx_image"]).resize((300, 300), Image.Resampling.NEAREST)
-            img_rx_pil = Image.fromarray(result["rx_image"]).resize((300, 300), Image.Resampling.NEAREST)
-
-            tk_img_tx = ctk.CTkImage(light_image=img_tx_pil, dark_image=img_tx_pil, size=(300, 300))
-            tk_img_rx = ctk.CTkImage(light_image=img_rx_pil, dark_image=img_rx_pil, size=(300, 300))
-
-            self.lbl_tx_img.configure(image=tk_img_tx, text="")
-            self.lbl_rx_img.configure(image=tk_img_rx, text="")
-            self.lbl_status.configure(text=result["info"], text_color="#30D760") # Verde SPTF
-            self.tabview.set("Visualización Imagen") # Cambiar foco a la pestaña relevante
-        else:
-            self.lbl_status.configure(text=f"Error: {result.get('error')}", text_color="red")
-            messagebox.showerror("Error de Simulación", f"Ocurrió un error al procesar la imagen:\n{result.get('error')}")
-
-    def action_plot_ber(self):
-        """Genera y muestra gráfica BER con la IMAGEN"""
-        # 1. Validación de seguridad
-        if not self.selected_image_path:
-            messagebox.showwarning("Falta Imagen", "Selecciona una imagen para analizar su BER.")
-            return
-
-        # 2. Recolectar Inputs
-        bw_idx = self.bw_map[self.option_bw.get()]
-        prof_idx = self.cp_map[self.option_cp.get()]
-        mod_idx = self.mod_map[self.option_mod.get()]
-        paths = int(self.slider_paths.get())
+        # Como borramos el slider SNR, ya no lo leemos aquí.
         
-        # --- NUEVO: Leer estado SFBC ---
-        # Asegúrate de haber creado self.switch_sfbc_var en setup_ui como vimos antes
         use_sfbc = (self.switch_sfbc_var.get() == "on")
+        tech_str = "SFBC (MISO)" if use_sfbc else "SISO"
 
-        self.lbl_status.configure(text="Calculando BER de la imagen... (Espere)")
+        self.lbl_status.configure(text=f"Procesando lote de imágenes ({tech_str})...")
         self.update()
 
         try:
-            # --- CAMBIO: Pasamos el flag use_sfbc al manager ---
-            snr_axis, ber_vals = self.manager.calculate_ber_curve(
-                self.selected_image_path, 
-                bw_idx, 
-                prof_idx, 
-                mod_idx, 
-                paths, 
-                use_sfbc=use_sfbc  # <--- Flag decisivo
+            # Llamar al Manager (Ahora devuelve 5 simulaciones)
+            batch_data = self.manager.run_comparison_batch(
+                self.selected_image_path, bw_idx, prof_idx, mod_idx, paths, use_sfbc
             )
 
-            # --- Título Dinámico ---
-            tech_str = "SFBC (MISO)" if use_sfbc else "SISO Normal"
-            title = f"Curva BER vs SNR - {tech_str}"
+            if not batch_data:
+                messagebox.showerror("Error", "Falló la simulación por lotes.")
+                return
 
-            self.embed_plot(self.tab_ber, snr_axis, ber_vals, 
-                           title, "SNR (dB)", "Bit Error Rate (BER)", log_y=True)
+            # --- VISUALIZACIÓN EN GRILLA 2x3 (6 IMÁGENES) ---
+            import matplotlib.pyplot as plt
+            from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+            # Limpiar frame anterior
+            for widget in self.tab_img.winfo_children():
+                widget.destroy()
+
+            # 1. Crear Figura más ancha (12x7 pulgadas)
+            fig = plt.Figure(figsize=(12, 7), dpi=100)
+            fig.patch.set_facecolor('#2b2b2b') 
             
-            self.lbl_status.configure(text=f"Gráfica BER generada ({tech_str}).")
-            self.tabview.set("Análisis BER")
+            # 2. Plotear ORIGINAL (Posición 1)
+            # add_subplot(Filas, Columnas, Índice) -> (2, 3, 1)
+            ax1 = fig.add_subplot(2, 3, 1)
+            ax1.imshow(batch_data['original'], cmap='gray', vmin=0, vmax=255)
+            ax1.set_title("ORIGINAL (Tx)", color='white', fontsize=10, fontweight='bold')
+            ax1.axis('off')
+
+            # 3. Plotear las 5 SIMULACIONES (Posiciones 2 a 6)
+            sims = batch_data['simulations']
             
+            # Iteramos automáticamente. 
+            # i va de 0 a 4. El subplot debe ir de 2 a 6.
+            for i, sim in enumerate(sims):
+                plot_idx = i + 2  # Posición en la grilla (2, 3, 4, 5, 6)
+                ax = fig.add_subplot(2, 3, plot_idx)
+                self._plot_subplot(ax, sim)
+
+            fig.tight_layout()
+
+            # Insertar en GUI
+            canvas = FigureCanvasTkAgg(fig, master=self.tab_img)
+            canvas.draw()
+            canvas.get_tk_widget().pack(expand=True, fill='both', padx=5, pady=5)
+            
+            self.lbl_status.configure(text=f"Comparativa 6 pasos completada. Modo: {tech_str}")
+
         except Exception as e:
-             # Es bueno imprimir el error en consola para depurar
-             import traceback
-             traceback.print_exc()
-             self.lbl_status.configure(text="Error en cálculo BER")
-             messagebox.showerror("Error", str(e))
+            import traceback
+            traceback.print_exc()
+            self.lbl_status.configure(text="Error en simulación")
+            messagebox.showerror("Error Crítico", str(e))
+
+    def _plot_subplot(self, ax, sim_data):
+        """Función auxiliar para no repetir código de plot"""
+        ax.imshow(sim_data['rx_image'], cmap='gray', vmin=0, vmax=255)
+        title = f"SNR: {sim_data['snr']} dB\nBER: {sim_data['ber']:.4f}"
+        
+        # Usamos colores para indicar calidad
+        color_title = '#ff5555' # Rojo (Malo)
+        if sim_data['ber'] < 0.1: color_title = '#ffb86c' # Naranja (Regular)
+        if sim_data['ber'] < 0.01: color_title = '#30D760' # Verde (Bueno)
+
+        ax.set_title(title, color=color_title, fontsize=9, fontweight='bold')
+        ax.axis('off')
+
+    def action_plot_ber(self):
+        """Genera curvas comparativas de BER"""
+        
+        # 1. Recolectar parámetros
+        bw_idx = self.bw_map[self.option_bw.get()]
+        prof_idx = self.cp_map[self.option_cp.get()]
+        mod_idx = self.mod_map[self.option_mod.get()]
+        paths = int(self.slider_paths.get())
+        
+        # 2. Determinar Modo de Comparación
+        use_sfbc = (self.switch_sfbc_var.get() == "on")
+        
+        if use_sfbc:
+            compare_mode = "DIVERSITY"
+            status_msg = "Generando comparación: SISO vs SFBC..."
+        else:
+            compare_mode = "MODULATIONS"
+            status_msg = "Generando comparación: QPSK vs 16QAM vs 64QAM..."
+
+        self.lbl_status.configure(text=status_msg)
+        self.update()
+
+        try:
+            # 3. Llamar al Manager
+            # Nota: Usamos la nueva función 'run_ber_comparison_logic'
+            curves_data = self.manager.run_ber_comparison_logic(
+                bw_idx, prof_idx, mod_idx, paths, compare_mode
+            )
+
+            # 4. Graficar
+            self._plot_ber_curves(curves_data)
+            
+            self.lbl_status.configure(text="Curvas BER generadas exitosamente.")
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            self.lbl_status.configure(text="Error generando BER")
+            messagebox.showerror("Error", str(e))
+
+    def _plot_ber_curves(self, curves_data):
+        """Función auxiliar para dibujar múltiples curvas con estilos personalizados"""
+        from matplotlib.figure import Figure
+        from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+        # Limpiar Tab
+        for widget in self.tab_ber.winfo_children():
+            widget.destroy()
+
+        # Crear Figura
+        fig = Figure(figsize=(6, 4), dpi=100)
+        fig.patch.set_facecolor('#2b2b2b')
+        ax = fig.add_subplot(111)
+        ax.set_facecolor('#2b2b2b')
+
+        # Iterar sobre las curvas recibidas
+        for curve in curves_data:
+            ax.semilogy(curve['x'], curve['y'], 
+                        marker=curve.get('marker', 'o'),    # Usa el marcador del dict o 'o' por defecto
+                        linestyle=curve.get('linestyle', '-'), # Usa el estilo del dict o '-'
+                        label=curve['label'], 
+                        color=curve['color'], 
+                        alpha=curve.get('alpha', 1.0),      # Transparencia opcional
+                        linewidth=2,
+                        markersize=5)
+
+        # Configuración Estética
+        ax.set_title("Comparativa Total: Modulación vs Diversidad", color='white', fontsize=12, fontweight='bold')
+        ax.set_xlabel("Relación Señal a Ruido (SNR) [dB]", color='white')
+        ax.set_ylabel("BER (Escala Logarítmica)", color='white')
+        
+        ax.tick_params(axis='x', colors='white')
+        ax.tick_params(axis='y', colors='white')
+        
+        # Grid y Límites
+        ax.grid(True, which="both", color='#444444', linestyle='--', alpha=0.5)
+        ax.set_ylim(bottom=0.00001, top=1.0) 
+
+        # Leyenda (Importante para entender las 6 curvas)
+        # La colocamos fuera o en la mejor posición posible
+        legend = ax.legend(frameon=True, facecolor='#2b2b2b', edgecolor='white', fontsize=8, loc='best')
+        for text in legend.get_texts():
+            text.set_color("white")
+
+        fig.tight_layout()
+
+        # Insertar en GUI
+        canvas = FigureCanvasTkAgg(fig, master=self.tab_ber)
+        canvas.draw()
+        canvas.get_tk_widget().pack(expand=True, fill='both', padx=10, pady=10)
 
     def action_plot_papr(self):
         """Genera y muestra gráfica PAPR con la IMAGEN"""

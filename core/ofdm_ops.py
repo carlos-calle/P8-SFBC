@@ -114,7 +114,7 @@ def equalize_channel(rx_freq_symbols, h_impulse_response, n_fft, nc):
 def apply_sfbc_encoding(symbols):
     """
     Codificación Alamouti/SFBC para 2 antenas.
-    Entrada: Array de símbolos (debe ser par).
+    Entrada: Array de símbolos 
     Salida: Tuple (symbols_ant1, symbols_ant2)
     """
     # Asegurar longitud par (padding si es necesario)
@@ -126,15 +126,15 @@ def apply_sfbc_encoding(symbols):
     s1 = symbols[1::2]
     
     # Construir vectores para cada antena
-    # Antena 1: [s0, -s1*]
+    # Antena 1: Mapeo directo [a0, a1, a2, a3...]
     ant1 = np.empty_like(symbols)
-    ant1[0::2] = s0
-    ant1[1::2] = -np.conj(s1)
-    
-    # Antena 2: [s1, s0*]
+    ant1[0::2] = s0  # Símbolos a0, a2, a4...
+    ant1[1::2] = s1  # Símbolos a1, a3, a5...
+
+    # Antena 2: Mapeo SFBC [-a1*, a0*, -a3*, a2*...]
     ant2 = np.empty_like(symbols)
-    ant2[0::2] = s1
-    ant2[1::2] = np.conj(s0)
+    ant2[0::2] = -np.conj(s1) # Corresponde a -a1*, -a3*...
+    ant2[1::2] = np.conj(s0)  # Corresponde a a0*, a2*...
     
     return ant1, ant2
 
@@ -169,9 +169,8 @@ def decode_sfbc(rx_symbols, h1_freq, h2_freq, nc):
     norm_sq[norm_sq == 0] = 1e-10
     
     # 6. Estimación (Fórmulas de Alamouti)
-    # Ahora todas las matrices tienen el mismo tamaño
     s0_est = (np.conj(H1_pair) * r0 + H2_pair * np.conj(r1)) / norm_sq
-    s1_est = (np.conj(H2_pair) * r0 - H1_pair * np.conj(r1)) / norm_sq
+    s1_est = (np.conj(H1_pair) * r1 - H2_pair * np.conj(r0)) / norm_sq
     
     # 7. Reconstruir el stream único
     # Preparamos el array de salida
