@@ -61,7 +61,7 @@ class MainWindow(ctk.CTk):
         self.option_cp.set("Normal (4.7µs)")
 
         # Grupo 2: Enlace y Canal
-        self.lbl_link = ctk.CTkLabel(self.sidebar_frame, text="Enlace y Canal:", anchor="w")
+        self.lbl_link = ctk.CTkLabel(self.sidebar_frame, text="Modulación:", anchor="w")
         self.lbl_link.grid(row=4, column=0, padx=20, pady=(20, 0))
 
         self.option_mod = ctk.CTkOptionMenu(self.sidebar_frame, values=list(self.mod_map.keys()))
@@ -72,7 +72,7 @@ class MainWindow(ctk.CTk):
 
         self.lbl_paths = ctk.CTkLabel(self.sidebar_frame, text="Caminos (Multipath): 1")
         self.lbl_paths.grid(row=6, column=0, padx=20, pady=(10,0))
-        self.slider_paths = ctk.CTkSlider(self.sidebar_frame, from_=1, to=10, number_of_steps=9, command=self.update_paths_label)
+        self.slider_paths = ctk.CTkSlider(self.sidebar_frame, from_=1, to=5, number_of_steps=4, command=self.update_paths_label)
         self.slider_paths.grid(row=7, column=0, padx=20, pady=5)
         self.slider_paths.set(1)
 
